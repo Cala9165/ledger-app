@@ -3,7 +3,26 @@
 Documento di consegna. Serve a riprendere il lavoro da zero in una sessione nuova,
 senza aver letto la conversazione in cui è stato scritto.
 
-Aggiornato al **16 settembre 2026**. Ultimo commit coperto: `e487838`.
+Scritto il **16 settembre 2026** (commit `e487838`), aggiornato al **9 ottobre 2026**
+(commit `04afee2`).
+
+> **Aggiornamento 9 ottobre 2026 — bug chiusi e copia pubblica online.**
+> - I **7 bug del §4 sono tutti chiusi** (commit `016a915`, «Giri 1 e 2»): mese del
+>   cedolino (anno solo fra l'anno scorso e il prossimo, e il cedolino ora si modifica e si
+>   cancella), prezzo da cache col suo orario vero, due schede aperte che si rileggono,
+>   righe del salvataggio rovinate contate e tenute da parte invece di bloccare tutto,
+>   rimborso 730 in tutti e due gli ordini, numeri del PDF Fon.Te interi, messaggio di
+>   Banca rifatto.
+> - Dal telefono si può salvare (prima ogni «Salva» si fermava: `crypto.randomUUID` non
+>   c'è su http); i file di `src/private/` non arrivano più al browser in nessun modo di
+>   avvio; porta fissa 5173. Dettagli nel README, «Dati personali».
+> - **Copia pubblica fatta** (§11): `github.com/Cala9165/ledger-app`, un solo commit
+>   (`806b290`), firmato `Ledger <209085895+Cala9165@users.noreply.github.com>`. Il
+>   repository di lavoro `Cala9165/ledger` resta **privato** ed è allineato con GitHub.
+> - Numeri di oggi: 63 file tracciati, ~15.000 righe TS/TSX, `npm run stress` → **1.134
+>   controlli**, tutti verdi; c'è la licenza MIT.
+> - Ancora aperto: le sei aree del §5 (mai setacciate) e i limiti del §7 (niente backup né
+>   sincronizzazione, tetto dei ~5 MB, niente CI).
 
 > **Aggiornamento 25 settembre 2026 — app nuda.** Interfaccia e nomi rifatti come un'app di
 > banca (Home a tre card, «i» a foglio con esempio in euro, accordion con una voce aperta,
@@ -147,10 +166,12 @@ morti per quello: 7 su 12 il primo, 6 su 6 il secondo. Pianificare di conseguenz
 
 ---
 
-## 4. Bug aperti, confermati e riproducibili
+## 4. Bug trovati il 16/9 — ✅ tutti chiusi il 9/10
 
 Tutti verificati con script eseguiti e passati da un verificatore ostile.
-Ordinati per gravità.
+Ordinati per gravità. **Corretti tutti e sette** in `016a915`, ognuno con i suoi controlli
+in `scripts/stress.mts`; la descrizione resta qui come storia (righe e file sono quelli di
+allora).
 
 ### 🔴 ALTA — Il mese del cedolino indovinato male, e poi non correggibile
 `src/lib/quadra.ts:541` (`guessCedolinoMese`)
@@ -282,7 +303,7 @@ funziona bene. Aprirla ad altri non è finirla, è rifondarla.
 | Backup | pulisci i dati del browser → perdi tutto |
 | Spazio oltre i ~5 MB di localStorage | ~50k movimenti CSV ≈ 4–5 MB, poi **il salvataggio fallisce in silenzio** |
 | CI (`.github` assente) | typecheck e stress girano solo se qualcuno se li ricorda |
-| Licenza | nessun `LICENSE` |
+| ~~Licenza~~ | ✅ MIT dal 27/9 (`LICENSE`) |
 | Privacy policy | obbligatoria dal momento in cui esiste un server |
 | Internazionalizzazione | tutte le stringhe scritte a mano in italiano |
 
@@ -386,6 +407,11 @@ scrivere codice, è **farlo usare a qualcun altro per un pomeriggio**.
 ---
 
 ## 11. Ultimo passo: dividere il repository
+
+> ✅ **Fatto il 9 ottobre 2026**: copia in `Documents\ledger-pubblico`, su GitHub come
+> `Cala9165/ledger-app` (pubblico). Per aggiornarla dopo nuovo lavoro: commit qui,
+> `npm run dividi -- --prova`, poi copiare i file cambiati in `ledger-pubblico` e fare lì un
+> commit normale (niente `--force`: la storia della copia pubblica è pulita da sola).
 
 Si fa **per ultimo**, quando il lavoro è finito e committato. Il codice di oggi è pulito,
 ma la storia git di sviluppo può contenere dati tolti dopo. Pubblicare quel repository
