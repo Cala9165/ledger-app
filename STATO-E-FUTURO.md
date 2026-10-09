@@ -21,8 +21,28 @@ Scritto il **16 settembre 2026** (commit `e487838`), aggiornato al **9 ottobre 2
 >   repository di lavoro `Cala9165/ledger` resta **privato** ed è allineato con GitHub.
 > - Numeri di oggi: 63 file tracciati, ~15.000 righe TS/TSX, `npm run stress` → **1.134
 >   controlli**, tutti verdi; c'è la licenza MIT.
-> - Ancora aperto: le sei aree del §5 (mai setacciate) e i limiti del §7 (niente backup né
->   sincronizzazione, tetto dei ~5 MB, niente CI).
+> - Ancora aperto: le aree del §5 dalla 2 alla 6 (mai setacciate) e i limiti del §7 (niente
+>   backup né sincronizzazione, tetto dei ~5 MB, niente CI).
+>
+> **Fase 2, area 1 (matematica di Investi) — fatta il 9 ottobre.** Quattro errori riprodotti
+> con script e corretti, ognuno con i suoi controlli in `stress` (ora 1.151):
+> 1. **Rata scritta senza tasso → interessi zero** (Investi *e* Casa). Chi sa la rata ma non il
+>    tasso vedeva «costo vero» senza interessi e, in Affitto, un guadagno in 10 anni quasi
+>    doppio (72.789 € invece di 36.689 € nell'esempio). Ora il tasso si ricava da debito, rata
+>    e ultima rata (`tanDallaRata` in `affare.ts`, `tanEffettivo` in `investi.ts`, usato anche
+>    da `interessiMese` in `casa.ts`); senza ultima rata non si può, e Investi lo dice.
+> 2. **Rata più bassa degli interessi**: l'app contava pagati gli interessi interi (5.000 €
+>    l'anno con una rata da 100 € al mese). Ora esce la rata, il resto va sul debito, e un
+>    avviso chiede di controllare.
+> 3. **Investimento con costi annui più grandi del capitale**: 100 € con 300 € di costi
+>    l'anno davano **+102.300 €** in 10 anni (una base negativa alla decima è positiva). Ora
+>    si perde tutto, come nella realtà.
+> 4. Il consiglio di «Guadagno all'anno» per i fondi citava «Il valore scende», che lì si
+>    chiama «Un anno brutto prima di vendere».
+>
+> Rimasti fuori, da decidere: la leva in Casa (`pascalLeva`) usa solo il tasso scritto, e
+> con il tasso vuoto tace invece di usare quello ricavato; una rata che non basta a chiudere
+> il debito entro l'ultima rata non viene segnalata.
 
 > **Aggiornamento 25 settembre 2026 — app nuda.** Interfaccia e nomi rifatti come un'app di
 > banca (Home a tre card, «i» a foglio con esempio in euro, accordion con una voce aperta,

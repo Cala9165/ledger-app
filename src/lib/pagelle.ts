@@ -107,7 +107,7 @@ export function pagellaInvestimento(valore: number, attivo: boolean, tipo: "casa
       cosaNonFare: [
         "Non alzare a mano «Quanto pensi che renda» per far salire il numero.",
         "Non guardare solo l'ultimo anno di mercato per decidere i prossimi dieci.",
-        "Non ignorare «Il valore scende»: è quello che decide se dormi la notte.",
+        "Non ignorare «Un anno brutto prima di vendere»: è quello che decide se dormi la notte.",
       ],
     };
   }

@@ -3560,6 +3560,42 @@ bad;dinamico;1;2;;;
   const cap = inv.analizzaCapitale({ capitale: 10_000, rendimento: 0.07, calo: 0.3, costi: [], ipotesi: ip({ anni: 10, inflazione: 0 }) });
   const giuC = cap.scenari.find((s) => s.id === "giu")!;
   assert(near(giuC.dopoAnni, 10_000 * 1.07 ** 9 * 0.7 - 10_000, 1e-6), `capitale: anno brutto una volta got ${giuC.dopoAnni}`);
+  // Costi annui più grandi del capitale: il fondo va a zero, non diventa un guadagno (una base negativa alla decima è positiva).
+  const capMangiato = inv.analizzaCapitale({ capitale: 100, rendimento: 0, calo: 0, costi: [{ id: "c", nome: "Conto titoli", importo: 300, cadenza: "anno" }], ipotesi: ip({ anni: 10, inflazione: 0 }) });
+  assert(capMangiato.scenari.every((s) => s.dopoAnni <= -100 + 1e-9), `capitale: costi più grandi del capitale → perdi tutto got ${capMangiato.scenari.map((s) => s.dopoAnni).join(",")}`);
+
+  // Rata scritta senza tasso: con l'ultima rata il tasso si ricava, gli interessi non sono zero.
+  {
+    const af = await import("../src/lib/affare.ts");
+    for (const [c, t, a] of [[150_000, 0.035, 25], [20_000, 0.08, 5], [100_000, 0.001, 30], [5_000, 0.25, 2]]) {
+      assert(near(af.tanDallaRata(c, af.rataFrancese(c, t, a), a * 12), t, 1e-9), `tanDallaRata ridà il tasso ${t}`);
+    }
+    assert(af.tanDallaRata(12_000, 100, 120) === 0, "tanDallaRata: rata × mesi = debito → tasso zero");
+    // 300 rate, questo mese compreso: l'ultima è fra 299 mesi.
+    const f25 = new Date(oggi.getFullYear(), oggi.getMonth() + 299, 1);
+    const fine25 = `${f25.getFullYear()}-${String(f25.getMonth() + 1).padStart(2, "0")}`;
+    assert(inv.mesiFino(fine25) === 300, "prova: 300 rate");
+    const rata = af.rataFrancese(150_000, 0.035, 25);
+    const deb = { residuo: 150_000, tan: 0, fine: fine25, rata };
+    assert(near(inv.tanEffettivo(deb).tan, 0.035, 1e-9) && inv.tanEffettivo(deb).stimato, "tanEffettivo: tasso ricavato dalla rata");
+    const ab = inv.analizzaAbito({ costi: [], debito: deb, affittoAltrove: 800, prezzo: 200_000 });
+    assert(near(ab.interessiMese * 12, inv.debitoNegliAnni({ ...deb, tan: 0.035 }, 1).anni[0].interessi / 1, 1e-6), `ci abito: interessi dal tasso ricavato got ${ab.interessiMese}`);
+    assert(ab.interessiMese > 400, `ci abito: rata senza tasso → interessi veri, non 0 got ${ab.interessiMese}`);
+    assert(inv.avvisoDebito(deb) === "tasso-stimato", "avviso: tasso stimato");
+    assert(inv.avvisoDebito({ ...deb, fine: "" }) === "tasso-mancante", "avviso: senza tasso né scadenza lo dice");
+    assert(inv.avvisoDebito({ ...deb, tan: 0.035 }) === null, "avviso: tasso scritto, niente da dire");
+    // Rata più bassa degli interessi: esce la rata, il resto si aggiunge al debito.
+    const basso = { residuo: 100_000, tan: 0.05, fine: "", rata: 100 };
+    const y = inv.debitoNegliAnni(basso, 1);
+    assert(near(y.anni[0].pagato, 1_200, 1e-9) && y.residuoFinale > 100_000, `rata sotto gli interessi: pagato 1.200, debito che cresce got ${y.anni[0].pagato} ${y.residuoFinale}`);
+    assert(inv.avvisoDebito(basso) === "rata-sotto-interessi", "avviso: rata sotto gli interessi");
+    // Casa: stessa regola in interessiMese.
+    const fisse = [{ id: "m", nome: "Mutuo", importo: rata, giorno: 1, mese: 1, frequenza: "mensile", categoria: "debito", note: "", voce: "mutuo" }];
+    const casa = { ...quadraMod.IMMOBILE_VUOTO, id: "c2", nome: "Casa", capitaleMutuo: 150_000, mutuoTan: 0, mutuoFine: fine25, fissaMutuoId: "m" };
+    assert(near(casaMod.interessiMese(casa as never, fisse as never), 150_000 * 0.035 / 12, 1e-6), `Casa: interessi dal tasso ricavato got ${casaMod.interessiMese(casa as never, fisse as never)}`);
+    assert(casaMod.interessiMese({ ...casa, mutuoFine: "" } as never, fisse as never) === 0, "Casa: senza tasso né scadenza resta 0");
+  }
+
   const capUna = inv.analizzaCapitale({ capitale: 10_000, rendimento: 0, calo: 0, costi: [{ id: "i", nome: "Costo di ingresso", importo: 200, cadenza: "una" }], ipotesi: ip({ anni: 5, inflazione: 0 }) });
   assert(near(capUna.scenari.find((s) => s.id === "fermo")!.dopoAnni, -200, 1e-9), "capitale: il costo una tantum entra nel conto");
 

@@ -7,7 +7,7 @@
  * l'inflazione lo erode a favore di chi lo ha: per questo si sgonfia il
  * patrimonio netto (casa meno debito), non la casa intera.
  */
-import { rataFrancese } from "./affare";
+import { rataFrancese, tanDallaRata } from "./affare";
 import type { RataPiano } from "./piano";
 
 export type Cadenza = "mese" | "anno" | "una" | "periodo";
@@ -123,6 +123,32 @@ export function rataEffettiva(d: Debito, oggi = new Date()): { rata: number; ori
   return { rata: 0, origine: "nessuna" };
 }
 
+/**
+ * Il tasso con cui contare gli interessi. Chi sa la rata spesso non sa il tasso:
+ * con la rata, il debito e l'ultima rata il tasso si ricava, e non vale zero.
+ * Senza scadenza non si può: resta 0 e l'avviso lo dice.
+ */
+export function tanEffettivo(d: Debito, oggi = new Date()): { tan: number; stimato: boolean } {
+  const tan = Number.isFinite(d.tan) ? Math.max(0, d.tan) : 0;
+  if (tan > 0 || d.piano?.length || !(d.rata > 0)) return { tan, stimato: false };
+  const stimato = tanDallaRata(Math.max(0, d.residuo || 0), d.rata, mesiFino(d.fine, oggi));
+  return stimato > 0 ? { tan: stimato, stimato: true } : { tan: 0, stimato: false };
+}
+
+/** Cosa dire sotto il mutuo, quando i dati non bastano o vanno ricontrollati. */
+export type AvvisoDebito = "tasso-stimato" | "tasso-mancante" | "rata-sotto-interessi";
+
+export function avvisoDebito(d: Debito, oggi = new Date()): AvvisoDebito | null {
+  const residuo = Math.max(0, d.residuo || 0);
+  if (!(residuo > 0) || d.piano?.length || !(d.rata > 0)) return null;
+  const { tan, stimato } = tanEffettivo(d, oggi);
+  if (tan > 0 && d.rata < (residuo * tan) / 12 - 0.005) return "rata-sotto-interessi";
+  if (stimato) return "tasso-stimato";
+  // Rata che basta a chiudere il debito entro la scadenza a tasso zero: un prestito a tasso zero esiste.
+  if (tan === 0 && !(mesiFino(d.fine, oggi) > 0)) return "tasso-mancante";
+  return null;
+}
+
 /** @deprecated usa rataEffettiva */
 export function rataDebito(d: Debito): number {
   return rataEffettiva(d).rata;
@@ -149,15 +175,21 @@ export function debitoNegliAnni(d: Debito, anni: number, oggi = new Date()): { a
     return { anni: out, residuoFinale };
   }
   let b = Math.max(0, d.residuo || 0);
-  const i = Math.max(0, d.tan || 0) / 12;
+  const i = tanEffettivo(d, oggi).tan / 12;
   const { rata, origine } = rataEffettiva(d, oggi);
   for (let m = 0; m < n * 12 && b > 0.005; m++) {
     const int = b * i;
-    const cap = origine === "solo-interessi" ? 0 : Math.min(b, Math.max(0, rata - int));
     const a = out[Math.floor(m / 12)];
     a.interessi += int;
-    a.capitale += cap;
-    a.pagato += int + cap;
+    if (origine === "solo-interessi") {
+      a.pagato += int;
+      continue;
+    }
+    // Esce la rata, non di più: se non copre gli interessi, quelli che mancano si aggiungono al debito.
+    const pagato = Math.min(b + int, rata);
+    const cap = pagato - int;
+    a.capitale += Math.max(0, cap);
+    a.pagato += pagato;
     b -= cap;
   }
   return { anni: out, residuoFinale: Math.max(0, b) };
@@ -359,6 +391,8 @@ export function analizzaCapitale(x: {
   const nettoAtteso = x.rendimento - pesoCosti;
   const calo = Math.min(1, Math.abs(x.calo));
   const defl = deflatore(x.ipotesi.inflazione, n);
+  // Un anno che si mangia tutto lascia zero, non un debito: una base negativa alla decima tornerebbe positiva.
+  const resta = (fattoreAnno: number) => Math.max(0, fattoreAnno);
   const mk = (id: Scenario["id"], label: string, fattore: number): Scenario => {
     const f = Math.max(0, fattore);
     const anno = f ** (1 / n) - 1;
@@ -376,9 +410,9 @@ export function analizzaCapitale(x: {
     unaTantum,
     nettoAtteso,
     scenari: [
-      mk("fermo", "Il valore sta fermo", (1 - pesoCosti) ** n),
-      mk("su", "Rende come pensi", (1 + x.rendimento - pesoCosti) ** n),
-      mk("giu", "Un anno brutto prima di vendere", (1 + x.rendimento - pesoCosti) ** (n - 1) * (1 - calo - pesoCosti)),
+      mk("fermo", "Il valore sta fermo", resta(1 - pesoCosti) ** n),
+      mk("su", "Rende come pensi", resta(1 + x.rendimento - pesoCosti) ** n),
+      mk("giu", "Un anno brutto prima di vendere", resta(1 + x.rendimento - pesoCosti) ** (n - 1) * resta(1 - calo - pesoCosti)),
     ],
     pronto: cap > 0,
   };

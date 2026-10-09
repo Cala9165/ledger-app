@@ -9,6 +9,7 @@ import {
   residuoAl,
   ultimaPagataAl,
 } from "./piano";
+import { tanEffettivo } from "./investi";
 
 /** Local calendar date — never UTC (avoids month off-by-one near midnight in EU). */
 function localTodayIso(): string {
@@ -185,7 +186,8 @@ export function bonusQuoteRimanenti(p: Patrimonio): number {
 
 /**
  * Interessi del mese. Col piano: quelli della rata. Senza piano, ma con debito e
- * TAN scritti dall'utente: debito × TAN / 12. Senza nessuno dei due: 0, non invento.
+ * TAN: debito × TAN / 12. Senza TAN ma con rata e ultima rata, il TAN si ricava
+ * dalla rata (come in Investi). Senza niente di questo: 0, non invento.
  */
 export function interessiMese(i: Immobile | undefined, fisse: Fissa[], iso = localTodayIso()): number {
   if (!i) return 0;
@@ -193,7 +195,11 @@ export function interessiMese(i: Immobile | undefined, fisse: Fissa[], iso = loc
   const r = rataDi(mutuo, iso);
   if (r) return r.i;
   if (pianoDi(mutuo)) return 0;
-  const tan = i.mutuoTan ?? 0;
+  const [y, m, g] = iso.split("-").map(Number);
+  const { tan } = tanEffettivo(
+    { residuo: i.capitaleMutuo, tan: i.mutuoTan ?? 0, fine: i.mutuoFine ?? "", rata: mutuo ? competenzaMese(mutuo) : 0 },
+    new Date(y, (m || 1) - 1, g || 1),
+  );
   if (i.capitaleMutuo > 0 && tan > 0) return (i.capitaleMutuo * tan) / 12;
   return 0;
 }

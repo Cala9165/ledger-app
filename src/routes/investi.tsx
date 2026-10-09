@@ -26,7 +26,9 @@ import {
   analizzaAbito,
   analizzaAffitto,
   analizzaCapitale,
+  avvisoDebito,
   costoAnno,
+  tanEffettivo,
   type Costo,
   type Debito,
   type Ipotesi,
@@ -331,7 +333,7 @@ function AbitoNuova() {
           </div>
         </AccordionItem>
       </AccordionGroup>
-      <NotaRata origine={e.origineRata} residuo={b.debito.residuo} />
+      <NotaRata origine={e.origineRata} debito={b.debito} />
       <Card>
         <p className="mb-3 text-sm font-semibold">{VOCI_CONVIENE}</p>
         <ConfrontoCasa
@@ -356,8 +358,29 @@ function AbitoNuova() {
   );
 }
 
-function NotaRata({ origine, residuo }: { origine: OrigineRata; residuo: number }) {
-  if (!(residuo > 0)) return null;
+function NotaRata({ origine, debito }: { origine: OrigineRata; debito: Debito }) {
+  if (!(debito.residuo > 0)) return null;
+  const avviso = avvisoDebito(debito);
+  if (avviso === "rata-sotto-interessi")
+    return (
+      <p className="rounded-2xl bg-amber-2 p-3 text-sm text-amber">
+        La rata non copre nemmeno gli interessi: così il debito cresce invece di scendere. Controlla la rata e il tasso.
+      </p>
+    );
+  if (avviso === "tasso-mancante")
+    return (
+      <p className="rounded-2xl bg-amber-2 p-3 text-sm text-amber">
+        Manca il tasso: non so quanta parte della rata sono interessi e li conto zero, quindi il costo esce più basso del
+        vero. Scrivi il tasso, oppure l'ultima rata così lo ricavo io. Se il prestito è davvero a tasso zero, va bene così.
+      </p>
+    );
+  if (avviso === "tasso-stimato")
+    return (
+      <p className="rounded-2xl bg-pine-2 p-3 text-sm text-pine">
+        Tasso ricavato dalla rata e dall'ultima rata: circa {pct(tanEffettivo(debito).tan, 2)}. Se la rata comprende
+        un'assicurazione esce un po' più alto del vero.
+      </p>
+    );
   if (origine === "solo-interessi")
     return (
       <p className="rounded-2xl bg-amber-2 p-3 text-sm text-amber">
@@ -673,7 +696,7 @@ function Affitto({ casa, turisti }: { casa: Immobile | undefined; turisti: boole
         </AccordionItem>
       </AccordionGroup>
 
-      <NotaRata origine={e.origineRata} residuo={debito.residuo} />
+      <NotaRata origine={e.origineRata} debito={debito} />
 
       {!e.pronto ? (
         <Card>

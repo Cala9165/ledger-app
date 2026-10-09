@@ -96,6 +96,24 @@ export function rataFrancese(capitale: number, tan: number, anni: number): numbe
   return (capitale * i * pow) / (pow - 1);
 }
 
+/**
+ * Il tasso che fa tornare la rata: debito, rata e numero di rate bastano, alla
+ * francese il tasso è uno solo. 0 se la rata copre appena il debito (o meno).
+ */
+export function tanDallaRata(capitale: number, rata: number, mesi: number): number {
+  if (!(capitale > 0) || !(rata > 0) || !(mesi >= 1)) return 0;
+  if (rata * mesi <= capitale * (1 + 1e-9)) return 0;
+  let lo = 0;
+  let hi = 1;
+  while (rataFrancese(capitale, hi, mesi / 12) < rata && hi < 8) hi *= 2;
+  for (let k = 0; k < 200; k++) {
+    const mid = (lo + hi) / 2;
+    if (rataFrancese(capitale, mid, mesi / 12) < rata) lo = mid;
+    else hi = mid;
+  }
+  return (lo + hi) / 2;
+}
+
 export function interessiAnno1(capitale: number, tan: number, anni: number): number {
   const rata = rataFrancese(capitale, tan, anni);
   if (rata <= 0) return 0;
